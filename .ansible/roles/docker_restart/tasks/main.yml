@@ -1,0 +1,17 @@
+- name: Build image with the service of YT subtitles editing on VPS
+  docker_image:
+    name: youtube_subtitles_image
+    state: present
+    force_source: yes
+    source: build
+    build:
+      path: "{{VPS_APP_PATH}}"
+      dockerfile: "./.docker/{{NODE_ENV}}.dockerfile"
+
+- name: Restart container with the service of YT subtitles editing on VPS
+  docker_container:
+    name: youtube_subtitles
+    image: youtube_subtitles_image
+    restart: yes
+    recreate: yes
+    network_mode: "host"

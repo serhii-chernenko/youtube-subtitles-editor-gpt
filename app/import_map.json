@@ -1,0 +1,24 @@
+{
+	"imports": {
+		"~/": "./",
+		"std/": "https://deno.land/std@0.175.0/",
+		"aleph/": "https://deno.land/x/aleph@1.0.0-beta.38/",
+		"aleph/react": "https://deno.land/x/aleph@1.0.0-beta.38/framework/react/mod.ts",
+		"aleph/plugins/react": "https://deno.land/x/aleph@1.0.0-beta.38/framework/react/plugin.ts",
+		"aleph/dev": "https://deno.land/x/aleph@1.0.0-beta.38/server/dev.ts",
+		"aleph/server": "https://deno.land/x/aleph@1.0.0-beta.38/server/mod.ts",
+		"axios": "https://esm.sh/v111/*axios@1.3.4",
+		"openai": "https://esm.sh/v111/*openai@3.2.1",
+		"react-dom": "https://esm.sh/v111/react-dom@18.2.0",
+		"react-dom/": "https://esm.sh/v111/react-dom@18.2.0/",
+		"react": "https://esm.sh/v111/react@18.2.0",
+		"datetime": "https://deno.land/std@0.180.0/datetime/mod.ts"
+	},
+	"scopes": {
+		"https://esm.sh/v111/": {
+			"follow-redirects": "https://esm.sh/v111/follow-redirects@1.15.2",
+			"form-data": "https://esm.sh/v111/form-data@4.0.0",
+			"proxy-from-env": "https://esm.sh/v111/proxy-from-env@1.1.0"
+		}
+	}
+}

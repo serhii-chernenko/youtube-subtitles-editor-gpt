@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+    app:
+        image: youtube_subtitles
+        container_name: youtube_subtitles
+        build:
+            context: ../
+            dockerfile: ./.docker/Dockerfile
+        ports:
+            - '3025:3025'
