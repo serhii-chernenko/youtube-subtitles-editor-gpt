@@ -1,35 +1,35 @@
 {
-	"compilerOptions": {
-		"lib": [
-			"dom",
-			"dom.iterable",
-			"dom.extras",
-			"deno.ns"
-		],
-		"types": [
-			"https://deno.land/x/aleph@1.0.0-beta.38/types.d.ts"
-		],
-		"jsx": "react-jsx",
-		"jsxImportSource": "https://esm.sh/v111/react@18.2.0"
-	},
-	"importMap": "import_map.json",
-	"tasks": {
-		"fmt": "deno fmt .",
-		"dev": "deno run -A https://deno.land/x/aleph@1.0.0-beta.38/dev.ts",
-		"docker:dev": "docker compose -f ../.docker/compose.yaml up --force-recreate --build --remove-orphans",
-		"start": "deno run -A server.ts",
-		"build": "deno run -A server.ts --build",
-		"esm:add": "deno run -A https://esm.sh/v111 add",
-		"esm:update": "deno run -A https://esm.sh/v111 update",
-		"esm:remove": "deno run -A https://esm.sh/v111 remove"
-	},
-	"fmt": {
-		"options": {
-			"useTabs": true,
-			"lineWidth": 80,
-			"indentWidth": 4,
-			"singleQuote": true,
-			"proseWrap": "preserve"
-		}
-	}
+    "compilerOptions": {
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "dom.extras",
+            "deno.ns"
+        ],
+        "types": [
+            "https://deno.land/x/aleph@1.0.0-beta.38/types.d.ts"
+        ],
+        "jsx": "react-jsx",
+        "jsxImportSource": "https://esm.sh/v111/react@18.2.0"
+    },
+    "importMap": "import_map.json",
+    "tasks": {
+        "fmt": "deno fmt .",
+        "dev": "deno run -A https://deno.land/x/aleph@1.0.0-beta.38/dev.ts",
+        "docker:dev": "docker compose -f ../.docker/compose.yaml up --force-recreate --build --remove-orphans",
+        "start": "deno run -A server.ts",
+        "build": "deno run -A server.ts --build",
+        "esm:add": "deno run -A https://esm.sh/v111 add",
+        "esm:update": "deno run -A https://esm.sh/v111 update",
+        "esm:remove": "deno run -A https://esm.sh/v111 remove"
+    },
+    "fmt": {
+        "options": {
+            "useTabs": false,
+            "lineWidth": 80,
+            "indentWidth": 4,
+            "singleQuote": true,
+            "proseWrap": "preserve"
+        }
+    }
 }
