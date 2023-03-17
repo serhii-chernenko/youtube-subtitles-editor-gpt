@@ -1,0 +1,8 @@
+{
+    "unreleased": [
+        "Don't cut the half of word",
+        "Make async requests but keep the order of chunks",
+        "Duplicate source text and cut it with the same chunks to make it better to compare"
+    ],
+    "1.0.0": "First version released"
+}
