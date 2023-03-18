@@ -141,8 +141,15 @@ export default function App() {
                     }
 
                     setTimeout(
-                        () =>
-                            Promise.all(job.map(sendRequest)).then(onResponses),
+                        () => {
+                            setInfo(
+                                `Processing ${chunks.length} chunk${
+                                    chunks.length > 1 ? 's' : ''
+                                }...`,
+                            );
+
+                            Promise.all(job.map(sendRequest)).then(onResponses)
+                        },
                         1000 * 70,
                     );
                 }
