@@ -6,7 +6,7 @@ import Left from '../components/Left.tsx';
 import Right from '../components/Right.tsx';
 import { OpenAiResponse, Result } from '../global.d.ts';
 
-const getChunks = (text: string, chunkSize: number = 2000): string[] => {
+const getChunks = (text: string, chunkSize: number = 200): string[] => {
     const chunks: string[] = [];
     let startIndex = 0;
     let endIndex = chunkSize;
@@ -92,15 +92,20 @@ export default function App() {
                     content: chunk,
                 },
             ],
+        }, {
+            headers: {
+                'User-Agent': null,
+            },
         });
     };
 
     const run: React.MouseEventHandler<HTMLButtonElement> = useCallback(
         async () => {
-            const chunks = getChunks(text);
-
             setLoading(true);
             setResult([]);
+
+            const chunks = getChunks(text);
+
             setChunks(chunks);
 
             const onResponses = (responses: OpenAiResponse[]) => {
@@ -126,16 +131,24 @@ export default function App() {
             };
 
             // Fix OpenAI restriction 20 requests per minute
-            if (chunks.length > 20) {
+            const REQUESTS_PER_MINUTE = 3;
+
+            if (chunks.length > REQUESTS_PER_MINUTE) {
                 const jobs = [];
 
-                for (let index = 0; index < chunks.length; index += 20) {
-                    jobs.push(chunks.slice(index, index + 20));
+                for (
+                    let index = 0;
+                    index < chunks.length;
+                    index += REQUESTS_PER_MINUTE
+                ) {
+                    jobs.push(chunks.slice(index, index + REQUESTS_PER_MINUTE));
                 }
 
                 for await (const [index, job] of jobs.entries()) {
                     if (index === 0) {
-                        Promise.all(job.map(sendRequest)).then(onResponses);
+                        Promise.all(job.map(sendRequest)).then(
+                            onResponses,
+                        );
 
                         continue;
                     }
@@ -148,9 +161,13 @@ export default function App() {
                                 }...`,
                             );
 
-                            Promise.all(job.map(sendRequest)).then(onResponses)
+                            console.log('processing')
+                            Promise.all(job.map(sendRequest)).then(
+                                onResponses,
+                            );
                         },
-                        1000 * 70,
+                        // 1000 * 70,
+                        3000,
                     );
                 }
             } else {
@@ -253,7 +270,6 @@ export default function App() {
                                 result={result}
                                 setResult={setResult}
                                 save={save}
-                                chunks={chunks}
                             />
                         </main>
                     </>
