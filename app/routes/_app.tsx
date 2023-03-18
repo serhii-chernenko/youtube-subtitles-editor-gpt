@@ -157,14 +157,13 @@ export default function App() {
         [text],
     );
 
-    const save: React.MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+    const save = () => {
         localStorage.setItem('original', JSON.stringify(chunks));
         localStorage.setItem('edited', JSON.stringify(result));
         localStorage.setItem('task', task);
-        setAutoSaving(true);
         setInfo('Saved!');
         setTimeout(() => setInfo(''), 2000);
-    });
+    };
 
     const reset: React.MouseEventHandler<HTMLButtonElement> = useCallback(
         () => {
@@ -173,7 +172,6 @@ export default function App() {
             localStorage.removeItem('task');
             setChunks([]);
             setResult([]);
-            setAutoSaving(false);
             setTask(defaultTask);
         },
     );
@@ -224,7 +222,6 @@ export default function App() {
                             {!isLoading && result.length
                                 ? (
                                     <div className='panel'>
-                                        <button onClick={save}>Save</button>
                                         <button onClick={reset}>Reset</button>
                                         <button onClick={copy}>
                                             Copy all edited chunks

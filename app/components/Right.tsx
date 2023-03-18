@@ -6,7 +6,7 @@ export default function Right(
     { result, setResult, save }: {
         result: Result[];
         setResult: React.SetStateAction<Result[]>;
-        save: React.MouseEventHandler<HTMLButtonElement>;
+        save: () => void;
     },
 ) {
     return (

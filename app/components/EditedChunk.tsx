@@ -6,7 +6,7 @@ export default function EditedChunk(
         index: number;
         isAutoSavingEnabled: boolean;
         setResult: React.SetStateAction<Result[]>;
-        save: React.MouseEventHandler<HTMLButtonElement>;
+        save: () => void;
     },
 ) {
     const [isEditable, setEditable] = useState<boolean>(false);
