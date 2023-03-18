@@ -53,6 +53,8 @@ export default function App() {
         if (apiKey && chunks.length && result.length) {
             confirmedApiKey(true);
         }
+
+        save();
     }, [apiKey, chunks, result]);
 
     const apiKeyHandler: React.ChangeEventHandler<HTMLInputElement> =
@@ -95,30 +97,30 @@ export default function App() {
 
     const run: React.MouseEventHandler<HTMLButtonElement> = useCallback(
         async () => {
-            setLoading(true);
-            setResult([]);
-
             const chunks = getChunks(text);
 
+            setLoading(true);
+            setResult([]);
             setChunks(chunks);
 
             const onResponses = (responses: OpenAiResponse[]) => {
                 responsesCollection = [...responsesCollection, ...responses];
 
                 for (const response of responses) {
-                    setResult((prev: Result[]) => [
-                        ...prev,
-                        {
-                            id: crypto.randomUUID(),
-                            text:
-                                response?.data?.choices[0]?.message?.content ??
+                    setResult((prev: Result[]) => {
+                        return [
+                            ...prev,
+                            {
+                                id: crypto.randomUUID(),
+                                text: response?.data?.choices[0]?.message
+                                    ?.content ??
                                     '',
-                        },
-                    ]);
+                            },
+                        ];
+                    });
                 }
 
                 if (responsesCollection.length === chunks.length) {
-                    setInfo('');
                     setLoading(false);
                 }
             };
@@ -148,22 +150,23 @@ export default function App() {
                 Promise.all(chunks.map(sendRequest)).then(onResponses);
             }
 
-            setInfo(
-                `Processing ${chunks.length} chunk${
-                    chunks.length > 1 ? 's' : ''
-                }...`,
-            );
+            setTimeout(() => {
+                setInfo(
+                    `Processing ${chunks.length} chunk${
+                        chunks.length > 1 ? 's' : ''
+                    }...`,
+                );
+            }, 0);
         },
         [text],
     );
 
-    const save = () => {
+    const save = useCallback(() => {
         localStorage.setItem('original', JSON.stringify(chunks));
         localStorage.setItem('edited', JSON.stringify(result));
         localStorage.setItem('task', task);
-        setInfo('Saved!');
-        setTimeout(() => setInfo(''), 2000);
-    };
+        setInfo('');
+    }, [result, chunks]);
 
     const reset: React.MouseEventHandler<HTMLButtonElement> = useCallback(
         () => {
@@ -243,6 +246,7 @@ export default function App() {
                                 result={result}
                                 setResult={setResult}
                                 save={save}
+                                chunks={chunks}
                             />
                         </main>
                     </>
