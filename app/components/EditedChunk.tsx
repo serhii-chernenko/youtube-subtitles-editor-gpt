@@ -33,7 +33,7 @@ export default function EditedChunk(
                 return setText(item.text);
             }
 
-            if (isAutoSavingEnabled && item.text && item.text !== text) {
+            if (item.text && item.text !== text) {
                 setResult((prev: Result[]) => {
                     prev[index] = {
                         id: crypto.randomUUID(),

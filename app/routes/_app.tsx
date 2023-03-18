@@ -44,7 +44,6 @@ export default function App() {
     );
     const [apiKeyConfirmed, confirmedApiKey] = useState<boolean>(false);
     const [isLoading, setLoading] = useState<boolean>(false);
-    const [isAutoSavingEnabled, setAutoSaving] = useState<boolean>(false);
     const [info, setInfo] = useState<string>('');
     const [task, setTask] = useState<string>(
         localStorage.getItem('task') ?? defaultTask,
@@ -53,7 +52,6 @@ export default function App() {
     useEffect(() => {
         if (apiKey && chunks.length && result.length) {
             confirmedApiKey(true);
-            setAutoSaving(true);
         }
     }, [apiKey, chunks, result]);
 
@@ -203,12 +201,11 @@ export default function App() {
                     text: response?.data?.choices[0]?.message?.content ?? '',
                 };
 
-                console.log(prev[index]);
                 return [...prev];
             });
 
             setLoading(false);
-            isAutoSavingEnabled ? save() : setInfo('');
+            save();
         });
     };
 
@@ -247,7 +244,6 @@ export default function App() {
                             />
                             <Right
                                 result={result}
-                                isAutoSavingEnabled={isAutoSavingEnabled}
                                 setResult={setResult}
                                 save={save}
                             />

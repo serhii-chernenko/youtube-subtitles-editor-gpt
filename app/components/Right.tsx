@@ -3,9 +3,8 @@ import EditedChunk from './EditedChunk.tsx';
 import { Result } from '../global.d.ts';
 
 export default function Right(
-    { result, isAutoSavingEnabled, setResult, save }: {
+    { result, setResult, save }: {
         result: Result[];
-        isAutoSavingEnabled: boolean;
         setResult: React.SetStateAction<Result[]>;
         save: React.MouseEventHandler<HTMLButtonElement>;
     },
@@ -24,7 +23,6 @@ export default function Right(
                                     <EditedChunk
                                         item={item}
                                         index={index}
-                                        isAutoSavingEnabled={isAutoSavingEnabled}
                                         setResult={setResult}
                                         save={save}
                                     />
