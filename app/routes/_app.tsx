@@ -1,111 +1,256 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { format as dateFormat } from 'datetime';
-import React, { useCallback, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useState } from 'react';
 import Key from '../components/Key.tsx';
 import Left from '../components/Left.tsx';
 import Right from '../components/Right.tsx';
+import { OpenAiResponse, Result } from '../global.d.ts';
 
 const getChunks = (text: string, chunkSize: number = 2000): string[] => {
     const chunks: string[] = [];
+    let startIndex = 0;
+    let endIndex = chunkSize;
 
-    for (let index = 0; index < text.length; index += chunkSize) {
-        chunks.push(text.substring(index, index + chunkSize));
+    while (endIndex < text.length) {
+        let lastSpaceIndex = text.lastIndexOf(' ', endIndex);
+
+        if (lastSpaceIndex === -1 || lastSpaceIndex <= startIndex) {
+            lastSpaceIndex = endIndex - 1;
+        }
+
+        chunks.push(text.substring(startIndex, lastSpaceIndex));
+        startIndex = lastSpaceIndex + 1;
+        endIndex = startIndex + chunkSize;
     }
+
+    chunks.push(text.substring(startIndex));
 
     return chunks;
 };
+
+const defaultTask =
+    'Виправ помилки та пунктуацію в тексті. Відправ мені тільки результат';
+
 export default function App() {
     const [apiKey, setApiKey] = useState<string>(
         localStorage.getItem('api_key') ?? '',
     );
-    const [apiKeyConfirmed, confirmedApiKey] = useState<boolean>(false);
     const [text, setText] = useState<string>('');
-    const [result, setResult] = useState<string[]>([]);
+    const [chunks, setChunks] = useState<string[]>(
+        JSON.parse(localStorage.getItem('original') ?? '[]'),
+    );
+    const [result, setResult] = useState<Result[]>(
+        JSON.parse(localStorage.getItem('edited') ?? '[]'),
+    );
+    const [apiKeyConfirmed, confirmedApiKey] = useState<boolean>(false);
     const [isLoading, setLoading] = useState<boolean>(false);
+    const [isAutoSavingEnabled, setAutoSaving] = useState<boolean>(false);
     const [info, setInfo] = useState<string>('');
-
-    const apiKeyHandler = useCallback<
-        React.ChangeEventHandler<HTMLInputElement>
-    >(
-        (event) => setApiKey(event.target.value),
-        [],
+    const [task, setTask] = useState<string>(
+        localStorage.getItem('task') ?? defaultTask,
     );
 
-    const confirmHandler = useCallback<
-        React.MouseEventHandler<HTMLButtonElement>
-    >(
-        () => {
-            localStorage.setItem('api_key', apiKey);
+    useEffect(() => {
+        if (apiKey && chunks.length && result.length) {
             confirmedApiKey(true);
-        },
-        [apiKey],
-    );
+            setAutoSaving(true);
+        }
+    }, [apiKey, chunks, result]);
 
-    const run = useCallback<React.MouseEventHandler<HTMLButtonElement>>(
+    const apiKeyHandler: React.ChangeEventHandler<HTMLInputElement> =
+        useCallback(
+            (event) => setApiKey(event.target.value),
+            [],
+        );
+
+    const confirmHandler: React.MouseEventHandler<HTMLButtonElement> =
+        useCallback(
+            () => {
+                localStorage.setItem('api_key', apiKey);
+                confirmedApiKey(true);
+            },
+            [apiKey],
+        );
+
+    const configuration = new Configuration({
+        apiKey,
+    });
+    const openai = new OpenAIApi(configuration);
+    let responsesCollection: OpenAiResponse[] = [];
+
+    const sendRequest = (chunk: string) => {
+        return openai.createChatCompletion({
+            model: 'gpt-3.5-turbo',
+            temperature: 0,
+            messages: [
+                {
+                    role: 'user',
+                    content: task,
+                },
+                {
+                    role: 'user',
+                    content: chunk,
+                },
+            ],
+        });
+    };
+
+    const run: React.MouseEventHandler<HTMLButtonElement> = useCallback(
         async () => {
             setLoading(true);
             setResult([]);
 
-            const chunks: string[] = getChunks(text);
+            const chunks = getChunks(text);
 
-            const configuration = new Configuration({
-                apiKey,
-            });
-            const openai = new OpenAIApi(configuration);
+            setChunks(chunks);
 
-            try {
-                for await (const [index, chunk] of chunks.entries()) {
-                    setInfo(
-                        `Processing ${index + 1} of ${chunks.length} chunks...`,
-                    );
+            const onResponses = (responses: OpenAiResponse[]) => {
+                responsesCollection = [...responsesCollection, ...responses];
 
-                    const response = await openai.createChatCompletion({
-                        model: 'gpt-3.5-turbo',
-                        temperature: 0,
-                        messages: [
-                            {
-                                role: 'user',
-                                content:
-                                    'Виправ помилки та пунктуацію в тексті. Відправ мені результат без зайвих слів',
-                            },
-                            {
-                                role: 'user',
-                                content: chunk,
-                            },
-                        ],
-                    });
-
-                    setResult((prev) => [
+                for (const response of responses) {
+                    setResult((prev: Result[]) => [
                         ...prev,
-                        response?.data?.choices[0]?.message?.content ?? '',
+                        {
+                            id: crypto.randomUUID(),
+                            text:
+                                response?.data?.choices[0]?.message?.content ??
+                                    '',
+                        },
                     ]);
-                    setInfo('');
                 }
-            } catch (error) {
-                setInfo(
-                    error?.error?.message ?? 'Oops, something went wrong...',
-                );
-                console.error(error);
-            } finally {
-                setLoading(false);
+
+                if (responsesCollection.length === chunks.length) {
+                    setInfo('');
+                    setLoading(false);
+                }
+            };
+
+            // Fix OpenAI restriction 20 requests per minute
+            if (chunks.length > 20) {
+                const jobs = [];
+
+                for (let index = 0; index < chunks.length; index += 20) {
+                    jobs.push(chunks.slice(index, index + 20));
+                }
+
+                for await (const [index, job] of jobs.entries()) {
+                    if (index === 0) {
+                        Promise.all(job.map(sendRequest)).then(onResponses);
+
+                        continue;
+                    }
+
+                    setTimeout(
+                        () =>
+                            Promise.all(job.map(sendRequest)).then(onResponses),
+                        1000 * 70,
+                    );
+                }
+            } else {
+                Promise.all(chunks.map(sendRequest)).then(onResponses);
             }
+
+            setInfo(
+                `Processing ${chunks.length} chunk${
+                    chunks.length > 1 ? 's' : ''
+                }...`,
+            );
         },
         [text],
     );
+
+    const save: React.MouseEventHandler<HTMLButtonElement> = useCallback(() => {
+        localStorage.setItem('original', JSON.stringify(chunks));
+        localStorage.setItem('edited', JSON.stringify(result));
+        localStorage.setItem('task', task);
+        setAutoSaving(true);
+        setInfo('Saved!');
+        setTimeout(() => setInfo(''), 2000);
+    });
+
+    const reset: React.MouseEventHandler<HTMLButtonElement> = useCallback(
+        () => {
+            localStorage.removeItem('original');
+            localStorage.removeItem('edited');
+            localStorage.removeItem('task');
+            setChunks([]);
+            setResult([]);
+            setAutoSaving(false);
+            setTask(defaultTask);
+        },
+    );
+
+    const copy: React.MouseEventHandler<HTMLButtonElement> = useCallback(
+        () => {
+            const temp = [];
+
+            for (const { text } of result) {
+                temp.push(text);
+            }
+
+            navigator.clipboard.writeText(temp.join('\n\n'));
+        },
+        [result],
+    );
+
+    const resend = (index: number) => {
+        setInfo(`Chunk ${index + 1} is processing...`);
+
+        sendRequest(chunks[index]).then((response) => {
+            setResult((prev: Result[]) => {
+                prev[index] = {
+                    id: crypto.randomUUID(),
+                    text: response?.data?.choices[0]?.message?.content ?? '',
+                };
+
+                console.log(prev[index]);
+                return [...prev];
+            });
+
+            setLoading(false);
+            isAutoSavingEnabled ? save() : setInfo('');
+        });
+    };
+
+    const currentYear = dateFormat(new Date(), 'yyyy');
+    const copyright = currentYear === '2023'
+        ? currentYear
+        : `2023-${currentYear}`;
 
     return (
         <>
             {apiKeyConfirmed
                 ? (
                     <>
-                        {info ? <div className='info'>{info}</div> : null}
+                        <header>
+                            {info ? <div className='info'>{info}</div> : null}
+                            {!isLoading && result.length
+                                ? (
+                                    <div className='panel'>
+                                        <button onClick={save}>Save</button>
+                                        <button onClick={reset}>Reset</button>
+                                        <button onClick={copy}>
+                                            Copy all edited chunks
+                                        </button>
+                                    </div>
+                                )
+                                : ''}
+                        </header>
                         <main>
                             <Left
                                 setText={setText}
                                 run={run}
-                                isLoading={isLoading}
+                                task={task}
+                                setTask={setTask}
+                                chunks={chunks}
+                                resend={resend}
                             />
-                            <Right result={result} />
+                            <Right
+                                result={result}
+                                isAutoSavingEnabled={isAutoSavingEnabled}
+                                setResult={setResult}
+                                save={save}
+                            />
                         </main>
                     </>
                 )
@@ -117,7 +262,7 @@ export default function App() {
                     />
                 )}
             <footer>
-                &copy; {dateFormat(new Date(), 'yyyy')}{' '}
+                &copy; {copyright}{' '}
                 <a href='https://chernenko.digital' target='_blank'>
                     Serhii Chernenko
                 </a>{' '}
