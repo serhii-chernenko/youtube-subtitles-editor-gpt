@@ -6,7 +6,4 @@ The main reason of creating this service is the limited context of gpt-3.5-turbo
 
 # Example
 
-![telegram-cloud-photo-size-2-5229058516524845643-y](https://user-images.githubusercontent.com/28815318/225910831-a45fb0d7-bba3-43cc-9193-c81c93b98cca.jpg)
-![telegram-cloud-photo-size-2-5229058516524845644-y](https://user-images.githubusercontent.com/28815318/225910845-2babc897-0305-4daa-aae7-0d023ad071a9.jpg)
-![telegram-cloud-photo-size-2-5229058516524845645-y](https://user-images.githubusercontent.com/28815318/225910858-abbbd23a-f366-4201-8959-38a2e62520e3.jpg)
-![telegram-cloud-photo-size-2-5229058516524846673-y](https://user-images.githubusercontent.com/28815318/225910868-3b699811-6f9d-4774-8a21-d310f3196ac8.jpg)
+<img width="1918" alt="image" src="https://user-images.githubusercontent.com/28815318/226191816-8f5b4043-3797-4128-bb90-134db6d1b1cb.png">
