@@ -2,7 +2,7 @@
 https://subtitles.chernenko.work/
 
 # Reason
-The main reason of creating this service is the limited context of gpt-3.5-turbo (4096 tokens). This service allows to paste a non-limited text but it'll cut to chunks and sent to ChatGPT API separately, and glued after
+The main reason of creating this service is the limited context of `gpt-3.5-turbo` (4096 tokens). This service allows to paste a non-limited text but it'll cut to chunks and sent to ChatGPT API separately, and glued after
 
 # Example
 
