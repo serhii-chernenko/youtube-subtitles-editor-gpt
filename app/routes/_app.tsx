@@ -25,7 +25,7 @@ export default function App() {
         JSON.parse(localStorage.getItem('edited') ?? '[]'),
     );
     const [apiKeyConfirmed, confirmedApiKey] = useState<boolean>(false);
-    const [isLoading, setLoading] = useState<boolean>(true);
+    const [isLoading, setLoading] = useState<boolean>(false);
     const [info, setInfo] = useState<string>('');
     const [task, setTask] = useState<string>(
         localStorage.getItem('task') ?? DEFAULT_TASK,
