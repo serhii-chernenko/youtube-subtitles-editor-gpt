@@ -1,6 +1,7 @@
 {
     "unreleased": [
-        "Perhaps iframe from YT could be added to not jump between browser's tabs"
+        "Perhaps iframe from YT could be added to not jump between browser's tabs",
+        "Fix that the info message is hide before first responses are got"
     ],
     "1.1.0": {
         "added": [
