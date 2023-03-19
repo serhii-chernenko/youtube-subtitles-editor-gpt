@@ -260,7 +260,9 @@ export default function App() {
             {apiKeyConfirmed
                 ? (
                     <>
-                        <header className={!isLoading || info ? 'is-sticky' : ''}>
+                        <header
+                            className={!isLoading || info ? 'is-sticky' : ''}
+                        >
                             {info ? <div className='info'>{info}</div> : null}
                             {!isLoading && result.length
                                 ? (

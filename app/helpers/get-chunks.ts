@@ -20,6 +20,7 @@ export default function getChunks(
             id: crypto.randomUUID(),
             order: counter,
             text: text.substring(startIndex, lastSpaceIndex),
+            done: false,
         });
         startIndex = lastSpaceIndex + 1;
         endIndex = startIndex + chunkSize;
