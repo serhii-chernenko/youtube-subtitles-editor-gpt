@@ -1,35 +1,17 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { format as dateFormat } from 'datetime';
 import React, { createContext, useCallback, useEffect, useState } from 'react';
+import getChunks from '../helpers/get-chunks.ts';
 import Key from '../components/Key.tsx';
-import Left from '../components/Left.tsx';
-import Right from '../components/Right.tsx';
-import { OpenAiResponse, Result } from '../global.d.ts';
-
-const getChunks = (text: string, chunkSize: number = 200): string[] => {
-    const chunks: string[] = [];
-    let startIndex = 0;
-    let endIndex = chunkSize;
-
-    while (endIndex < text.length) {
-        let lastSpaceIndex = text.lastIndexOf(' ', endIndex);
-
-        if (lastSpaceIndex === -1 || lastSpaceIndex <= startIndex) {
-            lastSpaceIndex = endIndex - 1;
-        }
-
-        chunks.push(text.substring(startIndex, lastSpaceIndex));
-        startIndex = lastSpaceIndex + 1;
-        endIndex = startIndex + chunkSize;
-    }
-
-    chunks.push(text.substring(startIndex));
-
-    return chunks;
-};
-
-const defaultTask =
-    'Виправ помилки та пунктуацію в тексті. Відправ мені тільки результат';
+import Task from '../components/Task.tsx';
+import Result from '../components/Result.tsx';
+import { Chunk, OpenAiResponse } from '../global.d.ts';
+import {
+    DEFAULT_TASK,
+    INFO_SHOW_SEC,
+    OPEANAI_REQUESTS_PER_MINUTE_LIMITATION,
+    REQUESTS_TIMEOUT_SEC,
+} from '../const.ts';
 
 export default function App() {
     const [apiKey, setApiKey] = useState<string>(
@@ -39,14 +21,14 @@ export default function App() {
     const [chunks, setChunks] = useState<string[]>(
         JSON.parse(localStorage.getItem('original') ?? '[]'),
     );
-    const [result, setResult] = useState<Result[]>(
+    const [result, setResult] = useState<Chunk[]>(
         JSON.parse(localStorage.getItem('edited') ?? '[]'),
     );
     const [apiKeyConfirmed, confirmedApiKey] = useState<boolean>(false);
-    const [isLoading, setLoading] = useState<boolean>(false);
+    const [isLoading, setLoading] = useState<boolean>(true);
     const [info, setInfo] = useState<string>('');
     const [task, setTask] = useState<string>(
-        localStorage.getItem('task') ?? defaultTask,
+        localStorage.getItem('task') ?? DEFAULT_TASK,
     );
 
     useEffect(() => {
@@ -76,102 +58,122 @@ export default function App() {
         apiKey,
     });
     const openai = new OpenAIApi(configuration);
-    let responsesCollection: OpenAiResponse[] = [];
 
-    const sendRequest = (chunk: string) => {
-        return openai.createChatCompletion({
-            model: 'gpt-3.5-turbo',
-            temperature: 0,
-            messages: [
-                {
-                    role: 'user',
-                    content: task,
-                },
-                {
-                    role: 'user',
-                    content: chunk,
-                },
-            ],
-        }, {
-            headers: {
-                'User-Agent': null,
+    const sendRequest = (text: string) => {
+        return openai.createChatCompletion(
+            {
+                model: 'gpt-3.5-turbo',
+                temperature: 0,
+                messages: [
+                    {
+                        role: 'user',
+                        content: task,
+                    },
+                    {
+                        role: 'user',
+                        content: text,
+                    },
+                ],
             },
+            {
+                headers: {
+                    'User-Agent': null,
+                },
+            },
+        );
+    };
+
+    const onResponse = (chunk: Chunk) => {
+        let res: Chunk[] = [];
+
+        setResult((prev: Chunk[]) => {
+            res = [
+                ...prev,
+                chunk,
+            ].sort((a, b) => a.order > b.order ? 1 : -1);
+
+            return res;
         });
+
+        setTimeout(() => {
+            const chunks = JSON.parse(localStorage.getItem('original') ?? '[]');
+
+            if (res.length === chunks.length) {
+                setInfo('');
+                setLoading(false);
+            }
+        }, 0);
+    };
+
+    const promiseWithTimeout = (
+        promise: Promise<OpenAiResponse>,
+        timeout: number = 1000 * REQUESTS_TIMEOUT_SEC,
+    ) => {
+        return Promise.race([
+            promise,
+            new Promise((resolve, reject) => {
+                setTimeout(
+                    () => reject(new Error('The request is timed out')),
+                    timeout,
+                );
+            }),
+        ]);
+    };
+
+    const runJob = (chunk: Chunk) => {
+        promiseWithTimeout(
+            sendRequest(chunk.text).then(
+                (response: OpenAiResponse) => {
+                    onResponse({
+                        ...chunk,
+                        text: response?.data?.choices[0]?.message
+                            ?.content ??
+                            '',
+                    });
+                },
+            ).catch(() => runJob(chunk)),
+        ).catch(() => runJob(chunk));
     };
 
     const run: React.MouseEventHandler<HTMLButtonElement> = useCallback(
-        async () => {
+        () => {
+            const chunks: Chunk[] = getChunks(text);
+
             setLoading(true);
             setResult([]);
-
-            const chunks = getChunks(text);
-
             setChunks(chunks);
 
-            const onResponses = (responses: OpenAiResponse[]) => {
-                responsesCollection = [...responsesCollection, ...responses];
-
-                for (const response of responses) {
-                    setResult((prev: Result[]) => {
-                        return [
-                            ...prev,
-                            {
-                                id: crypto.randomUUID(),
-                                text: response?.data?.choices[0]?.message
-                                    ?.content ??
-                                    '',
-                            },
-                        ];
-                    });
-                }
-
-                if (responsesCollection.length === chunks.length) {
-                    setLoading(false);
-                }
-            };
-
-            // Fix OpenAI restriction 20 requests per minute
-            const REQUESTS_PER_MINUTE = 3;
-
-            if (chunks.length > REQUESTS_PER_MINUTE) {
+            // Fix OpenAI restriction of requests per minute
+            if (chunks.length > OPEANAI_REQUESTS_PER_MINUTE_LIMITATION) {
                 const jobs = [];
 
                 for (
                     let index = 0;
                     index < chunks.length;
-                    index += REQUESTS_PER_MINUTE
+                    index += OPEANAI_REQUESTS_PER_MINUTE_LIMITATION
                 ) {
-                    jobs.push(chunks.slice(index, index + REQUESTS_PER_MINUTE));
+                    jobs.push(
+                        chunks.slice(
+                            index,
+                            index + OPEANAI_REQUESTS_PER_MINUTE_LIMITATION,
+                        ),
+                    );
                 }
 
-                for await (const [index, job] of jobs.entries()) {
-                    if (index === 0) {
-                        Promise.all(job.map(sendRequest)).then(
-                            onResponses,
-                        );
+                for (const [idx, job] of jobs.entries()) {
+                    if (idx === 0) {
+                        job.map(runJob);
 
                         continue;
                     }
 
                     setTimeout(
-                        () => {
-                            setInfo(
-                                `Processing ${chunks.length} chunk${
-                                    chunks.length > 1 ? 's' : ''
-                                }...`,
-                            );
-
-                            console.log('processing')
-                            Promise.all(job.map(sendRequest)).then(
-                                onResponses,
-                            );
-                        },
-                        // 1000 * 70,
-                        3000,
+                        () => job.map(runJob),
+                        REQUESTS_TIMEOUT_SEC * 1000,
                     );
                 }
             } else {
-                Promise.all(chunks.map(sendRequest)).then(onResponses);
+                chunks.map(runJob);
             }
 
             setTimeout(() => {
@@ -199,7 +201,7 @@ export default function App() {
             localStorage.removeItem('task');
             setChunks([]);
             setResult([]);
-            setTask(defaultTask);
+            setTask(DEFAULT_TASK);
         },
     );
 
@@ -216,15 +218,29 @@ export default function App() {
         [result],
     );
 
-    const resend = (index: number) => {
-        setInfo(`Chunk ${index + 1} is processing...`);
+    const resend = ({ id, order }: Chunk) => {
+        const chunk = chunks.find((item: Chunk) => item.id === id);
 
-        sendRequest(chunks[index]).then((response) => {
-            setResult((prev: Result[]) => {
-                prev[index] = {
-                    id: crypto.randomUUID(),
+        if (!chunk) {
+            setInfo(`Chunk ${order} isn't found`);
+
+            return setTimeout(() => setInfo(''), INFO_SHOW_SEC * 1000);
+        }
+
+        setLoading(true);
+        setResult((
+            prev: Chunk[],
+        ) => [...prev.filter((item) => item.id !== id)]);
+        setTimeout(() => setInfo(`Chunk ${order} is processing...`), 0);
+
+        sendRequest(chunk.text).then((response: OpenAiResponse) => {
+            setResult((prev: Chunk[]) => {
+                prev.push({
+                    id,
+                    order,
                     text: response?.data?.choices[0]?.message?.content ?? '',
-                };
+                    done: false,
+                });
 
                 return [...prev];
             });
@@ -244,32 +260,39 @@ export default function App() {
             {apiKeyConfirmed
                 ? (
                     <>
-                        <header>
+                        <header className={!isLoading || info ? 'is-sticky' : ''}>
                             {info ? <div className='info'>{info}</div> : null}
                             {!isLoading && result.length
                                 ? (
                                     <div className='panel'>
-                                        <button onClick={reset}>Reset</button>
+                                        <button
+                                            onClick={reset}
+                                            className='reset'
+                                        >
+                                            Reset
+                                        </button>
                                         <button onClick={copy}>
-                                            Copy all edited chunks
+                                            Copy all
                                         </button>
                                     </div>
                                 )
                                 : ''}
                         </header>
                         <main>
-                            <Left
+                            <Task
                                 setText={setText}
                                 run={run}
                                 task={task}
                                 setTask={setTask}
                                 chunks={chunks}
-                                resend={resend}
                             />
-                            <Right
+                            <Result
+                                chunks={chunks}
                                 result={result}
                                 setResult={setResult}
                                 save={save}
+                                resend={resend}
+                                isLoading={isLoading}
                             />
                         </main>
                     </>

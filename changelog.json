@@ -1,8 +1,20 @@
 {
     "unreleased": [
-        "Don't cut the half of word",
-        "Make async requests but keep the order of chunks",
-        "Duplicate source text and cut it with the same chunks to make it better to compare"
+        "Perhaps iframe from YT could be added to not jump between browser's tabs"
     ],
+    "1.1.0": {
+        "added": [
+            "The source text is duplicated near the edited chunks to make them better to compare",
+            "Re-generate buttons to re-create the request repeatedly",
+            "Buttons done/undone to help to separate a ready-text visually",
+            "Auto-saving mode to not lost any data accidentally",
+            "Requests re-sending when they're too long in the Pending status",
+            "Styles of buttons"
+        ],
+        "fixed": [
+            "The last word in each chunks will be always full",
+            "All requests will be send asynchronously. It saves a lot of time. For 55k characters from 30 min to 2 min"
+        ]
+    },
     "1.0.0": "First version released"
 }

@@ -1,6 +1,8 @@
-export interface Result {
-    id: string;
+export interface Chunk {
+    order: number;
     text: string;
+    id: string;
+    done?: boolean;
 }
 
 export interface OpenAiResponse {

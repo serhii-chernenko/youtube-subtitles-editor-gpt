@@ -1,22 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Result } from '../global.d.ts';
+import { Chunk } from '../global.d.ts';
 export default function EditedChunk(
-    { item, index, isAutoSavingEnabled, setResult, save }: {
-        item: Result;
-        index: number;
-        isAutoSavingEnabled: boolean;
-        setResult: React.SetStateAction<Result[]>;
-        save: () => void;
+    { chunk, setResult, save }: {
+        chunk: Chunk;
+        setResult: React.SetStateAction<Chunk[]>;
+        save: React.MouseEventHandler<HTMLButtonElement>;
     },
 ) {
     const [isEditable, setEditable] = useState<boolean>(false);
-    const [text, setText] = useState<string>(item.text);
+    const [text, setText] = useState<string>(chunk.text);
     const [height, setHeight] = useState<string>('');
     const p = useRef();
 
     useEffect(() => {
         if (p.current) {
-            setHeight(p.current.getBoundingClientRect().height);
+            setHeight(p.current.getBoundingClientRect().height + 10);
         }
     }, [p]);
 
@@ -30,29 +28,49 @@ export default function EditedChunk(
             setEditable(false);
 
             if (!text) {
-                return setText(item.text);
+                return setText(chunk.text);
             }
 
-            if (item.text && item.text !== text) {
-                setResult((prev: Result[]) => {
-                    prev[index] = {
-                        id: crypto.randomUUID(),
+            if (chunk.text && chunk.text !== text) {
+                setResult((prev: Chunk[]) => {
+                    const idx = prev.findIndex(({ order }) =>
+                        order === chunk.order
+                    );
+
+                    prev[idx] = {
+                        ...prev[idx],
                         text,
                     };
 
-                    return prev;
+                    return [...prev];
                 });
-
-                save();
             }
         },
     );
 
     const edit: React.MouseEventHandler<HTMLParagraphElement> = useCallback(
         () => {
-            setEditable(true);
+            if (!chunk.done) {
+                setEditable(true);
+            }
         },
     );
+
+    const toggleStatus: React.MouseEventHandler<HTMLButtonElement> =
+        useCallback(() => {
+            setResult((prev: Chunk[]) => {
+                const idx = prev.findIndex(({ order }) =>
+                    order === chunk.order
+                );
+
+                prev[idx] = {
+                    ...prev[idx],
+                    done: !prev[idx].done,
+                };
+
+                return [...prev];
+            });
+        });
 
     const copy: React.MouseEventHandler<HTMLButtonElement> = useCallback(() => {
         navigator.clipboard.writeText(text);
@@ -73,10 +91,26 @@ export default function EditedChunk(
                 )
                 : (
                     <>
-                        <p ref={p} onClick={edit}>{text}</p>
-                        <button onClick={copy}>Copy only this chunk</button>
+                        <p
+                            ref={p}
+                            onClick={edit}
+                            className={chunk.done
+                                ? 'edited ready-text'
+                                : 'edited'}
+                        >
+                            {text}
+                        </p>
                     </>
                 )}
+            <div className='chunk-panel'>
+                <button
+                    onClick={toggleStatus}
+                    className={chunk.done ? 'undone' : 'done'}
+                >
+                    {chunk.done ? 'Undone' : 'Done'}
+                </button>
+                <button onClick={copy}>Copy</button>
+            </div>
         </>
     );
 }
